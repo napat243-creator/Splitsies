@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splitsies — Bill Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #2A2622;
+    --bg-soft: #34302A;
+    --paper: #F7F1E6;
+    --paper-dim: #ECE3D2;
+    --ink: #2A2622;
+    --ink-soft: #6B6258;
+    --curry: #D97D3E;
+    --curry-deep: #B5602B;
+    --sage: #8A9A7E;
+    --red: #C4543C;
+    --line: #D8CCB4;
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(217,125,62,0.08), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(138,154,126,0.06), transparent 40%);
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 28px 14px 60px;
+  }
+
+  .wrap{ width: 100%; max-width: 460px; }
+
+  .eyebrow{
+    color: var(--curry);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 6px;
+    opacity: 0.85;
+  }
+
+  h1{
+    font-family: 'Archivo Black', sans-serif;
+    color: var(--paper);
+    text-align: center;
+    font-size: 30px;
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+  }
+  h1 span{ color: var(--curry); }
+
+  .receipt{
+    background: var(--paper);
+    border-radius: 2px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.04);
+    position: relative;
+    padding: 28px 22px 8px;
+  }
+
+  /* torn edge top */
+  .tear-top, .tear-bottom{
+    position: absolute;
+    left: 0; right: 0;
+    height: 14px;
+    background:
+      linear-gradient(135deg, var(--bg) 50%, transparent 50%) 0 0/14px 14px repeat-x,
+      linear-gradient(-135deg, var(--bg) 50%, transparent 50%) 0 0/14px 14px repeat-x;
+    background-position: 0 0, 7px 0;
+  }
+  .tear-top{ top: -14px; transform: scaleY(-1); }
+  .tear-bottom{ bottom: -14px; }
+
+  .receipt-head{
+    text-align: center;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 16px;
+    margin-bottom: 18px;
+  }
+  .receipt-head .label{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .receipt-head input{
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 19px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    width: 100%;
+    margin-top: 4px;
+    outline: none;
+  }
+
+  section{ margin-bottom: 20px; }
+
+  .sec-label{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* people chips */
+  .people-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .chip{
+    background: var(--paper-dim);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 10px 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .chip input{
+    border: none;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    width: 64px;
+    outline: none;
+    color: var(--ink);
+  }
+  .chip button{
+    border: none;
+    background: var(--line);
+    color: var(--ink);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .chip button:hover{ background: var(--red); color: var(--paper); }
+
+  .add-btn{
+    border: 1px dashed var(--ink-soft);
+    background: transparent;
+    color: var(--ink-soft);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .add-btn:hover{ border-color: var(--curry); color: var(--curry-deep); }
+
+  /* items */
+  .item-row{
+    display: grid;
+    grid-template-columns: 1fr 90px 30px;
+    gap: 8px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px dotted var(--line);
+  }
+  .item-row input[type="text"]{
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    color: var(--ink);
+  }
+  .item-row .amt{
+    display: flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    justify-content: flex-end;
+  }
+  .item-row .amt span{ color: var(--ink-soft); margin-right: 3px; font-size: 12px; }
+  .item-row input[type="number"]{
+    border: none;
+    background: transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    text-align: right;
+    outline: none;
+    color: var(--ink);
+    width: 100%;
+  }
+  .item-row .who{
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+  }
+  .who-tag{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+  }
+  .who-tag.active{
+    background: var(--curry);
+    border-color: var(--curry);
+    color: var(--paper);
+  }
+  .del-item{
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 16px;
+    text-align: right;
+  }
+  .del-item:hover{ color: var(--red); }
+
+  /* params */
+  .param-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .param{
+    background: var(--paper-dim);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .param label{
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 3px;
+  }
+  .param .row{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .param input[type="number"]{
+    border: none;
+    background: transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    width: 100%;
+    outline: none;
+    color: var(--ink);
+  }
+  .param .unit{ font-size: 12px; color: var(--ink-soft); }
+
+  .toggle-row{
+    display: flex;
+    gap: 14px;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .toggle-row label{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  /* totals */
+  .totals{
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .totals .line{
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    color: var(--ink-soft);
+  }
+  .totals .grand{
+    display: flex;
+    justify-content: space-between;
+    font-size: 20px;
+    font-family: 'Archivo Black', sans-serif;
+    color: var(--ink);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .grand span:last-child{ color: var(--curry-deep); }
+
+  .split-list{ margin-top: 18px; }
+  .split-card{
+    background: var(--bg-soft);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .split-card .name{
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .split-card .sub{
+    color: #9C9486;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    margin-top: 2px;
+  }
+  .split-card .amt{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--curry);
+  }
+
+  .warn{
+    background: rgba(196,84,60,0.12);
+    border: 1px solid rgba(196,84,60,0.4);
+    color: var(--red);
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    display: none;
+  }
+  .warn.show{ display: block; }
+
+  .reset-link{
+    text-align: center;
+    margin-top: 16px;
+  }
+  .reset-link button{
+    background: none;
+    border: none;
+    color: #8A8275;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    .split-card, .chip{ transition: transform 0.15s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">table for however many</div>
+  <h1>Split<span>sies</span></h1>
+
+  <div class="receipt">
+    <div class="tear-top"></div>
+
+    <div class="receipt-head">
+      <div class="label">venue</div>
+      <input id="venueName" type="text" value="Somewhere good" placeholder="Where are we?">
+    </div>
+
+    <section>
+      <div class="sec-label">Who's here <span id="peopleCount">0</span></div>
+      <div class="people-row" id="peopleRow"></div>
+      <button class="add-btn" id="addPerson">+ add person</button>
+    </section>
+
+    <section>
+      <div class="sec-label">Items <span id="itemCount">0</span></div>
+      <div id="itemsBody"></div>
+      <button class="add-btn" id="addItem" style="margin-top:8px;">+ add item</button>
+    </section>
+
+    <section>
+      <div class="sec-label">Adjustments</div>
+      <div class="param-grid">
+        <div class="param">
+          <label>Service / VAT</label>
+          <div class="row"><input type="number" id="taxPct" value="7" min="0" step="0.5"><span class="unit">%</span></div>
+        </div>
+        <div class="param">
+          <label>Tip</label>
+          <div class="row"><input type="number" id="tipPct" value="10" min="0" step="1"><span class="unit">%</span></div>
+        </div>
+        <div class="param">
+          <label>Discount</label>
+          <div class="row"><input type="number" id="discountAmt" value="0" min="0" step="1"><span class="unit">฿</span></div>
+        </div>
+        <div class="param">
+          <label>Round per person</label>
+          <div class="row"><input type="number" id="roundTo" value="0" min="0" step="1"><span class="unit">฿</span></div>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="splitEvenly"> split everything evenly (ignore who-had-what)</label>
+      </div>
+    </section>
+
+    <div class="totals">
+      <div class="line"><span>Subtotal</span><span id="subOut">฿0</span></div>
+      <div class="line"><span>Service / VAT</span><span id="taxOut">+฿0</span></div>
+      <div class="line"><span>Tip</span><span id="tipOut">+฿0</span></div>
+      <div class="line"><span>Discount</span><span id="discOut">−฿0</span></div>
+      <div class="grand"><span>Total</span><span id="grandOut">฿0</span></div>
+    </div>
+
+    <div class="warn" id="warnBox"></div>
+
+    <div class="split-list" id="splitList"></div>
+
+    <div class="reset-link">
+      <button id="resetAll">reset everything</button>
+    </div>
+
+    <div class="tear-bottom"></div>
+  </div>
+</div>
+
+<script>
+  const CURRENCY = "฿"; // change to "$" / "€" / "£" etc.
+
+  let people = [
+    { id: 1, name: "You" },
+    { id: 2, name: "Friend 1" }
+  ];
+  let nextPersonId = 3;
+
+  let items = [
+    { id: 1, name: "", amount: "", who: [] }
+  ];
+  let nextItemId = 2;
+
+  const peopleRow = document.getElementById('peopleRow');
+  const itemsBody = document.getElementById('itemsBody');
+  const peopleCount = document.getElementById('peopleCount');
+  const itemCount = document.getElementById('itemCount');
+  const warnBox = document.getElementById('warnBox');
+
+  function fmt(n){
+    n = isFinite(n) ? n : 0;
+    return CURRENCY + n.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+  }
+
+  function renderPeople(){
+    peopleRow.innerHTML = '';
+    people.forEach(p => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.innerHTML = `
+        <input type="text" value="${p.name}" data-id="${p.id}" class="person-name">
+        <button data-id="${p.id}" class="remove-person" aria-label="remove">×</button>
+      `;
+      peopleRow.appendChild(chip);
+    });
+    peopleCount.textContent = people.length;
+
+    peopleRow.querySelectorAll('.person-name').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const id = Number(e.target.dataset.id);
+        people.find(p => p.id === id).name = e.target.value;
+        renderItems(); // names shown in who-tags need refresh
+        calculate();
+      });
+    });
+    peopleRow.querySelectorAll('.remove-person').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = Number(e.target.dataset.id);
+        people = people.filter(p => p.id !== id);
+        items.forEach(it => { it.who = it.who.filter(w => w !== id); });
+        renderPeople();
+        renderItems();
+        calculate();
+      });
+    });
+  }
+
+  function renderItems(){
+    itemsBody.innerHTML = '';
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <input type="text" placeholder="e.g. Pad Krapow" value="${it.name}" data-id="${it.id}" class="item-name">
+        <div class="amt"><span>${CURRENCY}</span><input type="number" placeholder="0" value="${it.amount}" data-id="${it.id}" class="item-amt" min="0" step="1"></div>
+        <button class="del-item" data-id="${it.id}" aria-label="remove item">×</button>
+        <div class="who" data-id="${it.id}">
+          ${people.map(p => `<span class="who-tag ${it.who.includes(p.id) ? 'active' : ''}" data-item="${it.id}" data-person="${p.id}">${p.name || 'Unnamed'}</span>`).join('')}
+        </div>
+      `;
+      itemsBody.appendChild(row);
+    });
+    itemCount.textContent = items.length;
+
+    itemsBody.querySelectorAll('.item-name').forEach(inp => {
+      inp.addEventListener('input', e => {
+        items.find(i => i.id === Number(e.target.dataset.id)).name = e.target.value;
+      });
+    });
+    itemsBody.querySelectorAll('.item-amt').forEach(inp => {
+      inp.addEventListener('input', e => {
+        items.find(i => i.id === Number(e.target.dataset.id)).amount = e.target.value;
+        calculate();
+      });
+    });
+    itemsBody.querySelectorAll('.del-item').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = Number(e.target.dataset.id);
+        items = items.filter(i => i.id !== id);
+        renderItems();
+        calculate();
+      });
+    });
+    itemsBody.querySelectorAll('.who-tag').forEach(tag => {
+      tag.addEventListener('click', e => {
+        const itemId = Number(e.target.dataset.item);
+        const personId = Number(e.target.dataset.person);
+        const it = items.find(i => i.id === itemId);
+        if (it.who.includes(personId)) {
+          it.who = it.who.filter(x => x !== personId);
+        } else {
+          it.who.push(personId);
+        }
+        renderItems();
+        calculate();
+      });
+    });
+  }
+
+  function calculate(){
+    const taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+    const tipPct = parseFloat(document.getElementById('tipPct').value) || 0;
+    const discountAmt = parseFloat(document.getElementById('discountAmt').value) || 0;
+    const roundTo = parseFloat(document.getElementById('roundTo').value) || 0;
+    const splitEvenly = document.getElementById('splitEvenly').checked;
+
+    const subtotal = items.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0);
+    const taxAmt = subtotal * (taxPct / 100);
+    const tipAmt = subtotal * (tipPct / 100);
+    const grand = Math.max(0, subtotal + taxAmt + tipAmt - discountAmt);
+    const surchargeMultiplier = subtotal > 0 ? grand / subtotal : 0;
+
+    document.getElementById('subOut').textContent = fmt(subtotal);
+    document.getElementById('taxOut').textContent = '+' + fmt(taxAmt);
+    document.getElementById('tipOut').textContent = '+' + fmt(tipAmt);
+    document.getElementById('discOut').textContent = '−' + fmt(discountAmt);
+    document.getElementById('grandOut').textContent = fmt(grand);
+
+    // per-person raw shares
+    const shares = {};
+    people.forEach(p => shares[p.id] = 0);
+
+    let unassignedCost = 0;
+    if (people.length > 0) {
+      items.forEach(it => {
+        const amt = parseFloat(it.amount) || 0;
+        if (amt <= 0) return;
+        if (splitEvenly || it.who.length === 0) {
+          unassignedCost += amt; // goes into the evenly-split pool
+        } else {
+          const per = amt / it.who.length;
+          it.who.forEach(pid => { if (shares[pid] !== undefined) shares[pid] += per; });
+        }
+      });
+      const evenShare = unassignedCost / people.length;
+      people.forEach(p => { shares[p.id] += evenShare; });
+    }
+
+    // warn about unassigned items only when NOT splitting evenly
+    const unassignedItems = items.filter(it => !splitEvenly && it.who.length === 0 && (parseFloat(it.amount) || 0) > 0);
+    if (unassignedItems.length > 0) {
+      warnBox.textContent = `${unassignedItems.length} item${unassignedItems.length > 1 ? 's' : ''} not assigned to anyone — split evenly across the table instead.`;
+      warnBox.classList.add('show');
+    } else {
+      warnBox.classList.remove('show');
+    }
+
+    const splitList = document.getElementById('splitList');
+    splitList.innerHTML = '';
+    people.forEach(p => {
+      let owed = shares[p.id] * surchargeMultiplier;
+      if (roundTo > 0) {
+        owed = Math.ceil(owed / roundTo) * roundTo;
+      }
+      const card = document.createElement('div');
+      card.className = 'split-card';
+      card.innerHTML = `
+        <div>
+          <div class="name">${p.name || 'Unnamed'}</div>
+          <div class="sub">incl. tax + tip</div>
+        </div>
+        <div class="amt">${fmt(owed)}</div>
+      `;
+      splitList.appendChild(card);
+    });
+  }
+
+  document.getElementById('addPerson').addEventListener('click', () => {
+    people.push({ id: nextPersonId, name: `Friend ${nextPersonId - 1}` });
+    nextPersonId++;
+    renderPeople();
+    renderItems();
+    calculate();
+  });
+
+  document.getElementById('addItem').addEventListener('click', () => {
+    items.push({ id: nextItemId, name: "", amount: "", who: [] });
+    nextItemId++;
+    renderItems();
+    calculate();
+  });
+
+  document.getElementById('resetAll').addEventListener('click', () => {
+    people = [{ id: 1, name: "You" }, { id: 2, name: "Friend 1" }];
+    nextPersonId = 3;
+    items = [{ id: 1, name: "", amount: "", who: [] }];
+    nextItemId = 2;
+    document.getElementById('taxPct').value = 7;
+    document.getElementById('tipPct').value = 10;
+    document.getElementById('discountAmt').value = 0;
+    document.getElementById('roundTo').value = 0;
+    document.getElementById('splitEvenly').checked = false;
+    document.getElementById('venueName').value = "Somewhere good";
+    renderPeople();
+    renderItems();
+    calculate();
+  });
+
+  ['taxPct','tipPct','discountAmt','roundTo','splitEvenly'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calculate);
+  });
+
+  renderPeople();
+  renderItems();
+  calculate();
+</script>
+</body>
+</html>
