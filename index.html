@@ -297,6 +297,61 @@
     cursor: pointer;
   }
 
+  .hint{
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  .payer-row{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px dotted var(--line);
+  }
+  .payer-row .pname{
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .mode-btns{
+    display: flex;
+    gap: 4px;
+  }
+  .mode-btn{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .mode-btn.active{
+    background: var(--sage);
+    border-color: var(--sage);
+    color: var(--paper);
+  }
+  .payer-row .partial-amt{
+    width: 80px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    text-align: right;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 4px 6px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    display: none;
+  }
+  .payer-row .partial-amt.show{ display: inline-block; }
+
   /* totals */
   .totals{
     border-top: 1px dashed var(--line);
@@ -349,6 +404,38 @@
     font-weight: 700;
     color: var(--curry);
   }
+  .split-card .amt.settled{ color: var(--sage); }
+
+  .settle-card{
+    background: var(--bg-soft);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--curry);
+  }
+  .settle-card .who{
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .settle-card .who .arrow{ color: var(--curry); font-weight: 400; }
+  .settle-card .amt{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--curry);
+  }
+  .settle-card.all-clear{
+    border-left-color: var(--sage);
+    justify-content: center;
+  }
+  .settle-card.all-clear .who{ color: var(--sage); }
 
   .warn{
     background: rgba(196,84,60,0.12);
@@ -411,12 +498,16 @@
       <div class="sec-label">Adjustments</div>
       <div class="param-grid">
         <div class="param">
-          <label>Service / VAT</label>
-          <div class="row"><input type="number" id="taxPct" value="7" min="0" step="0.5"><span class="unit">%</span></div>
+          <label>VAT</label>
+          <div class="row"><input type="number" id="vatPct" value="7" min="0" step="0.5"><span class="unit">%</span></div>
+        </div>
+        <div class="param">
+          <label>Service charge</label>
+          <div class="row"><input type="number" id="servicePct" value="10" min="0" step="0.5"><span class="unit">%</span></div>
         </div>
         <div class="param">
           <label>Tip</label>
-          <div class="row"><input type="number" id="tipPct" value="10" min="0" step="1"><span class="unit">%</span></div>
+          <div class="row"><input type="number" id="tipPct" value="0" min="0" step="1"><span class="unit">%</span></div>
         </div>
         <div class="param">
           <label>Discount</label>
@@ -432,17 +523,29 @@
       </div>
     </section>
 
+    <section>
+      <div class="sec-label">Who paid upfront <span id="payerCount">0</span></div>
+      <div id="payersBody"></div>
+      <div class="hint" id="payerHint">Mark anyone who already paid the venue — full amount or a portion.</div>
+    </section>
+
     <div class="totals">
       <div class="line"><span>Subtotal</span><span id="subOut">฿0</span></div>
-      <div class="line"><span>Service / VAT</span><span id="taxOut">+฿0</span></div>
+      <div class="line"><span>VAT</span><span id="vatOut">+฿0</span></div>
+      <div class="line"><span>Service charge</span><span id="serviceOut">+฿0</span></div>
       <div class="line"><span>Tip</span><span id="tipOut">+฿0</span></div>
       <div class="line"><span>Discount</span><span id="discOut">−฿0</span></div>
       <div class="grand"><span>Total</span><span id="grandOut">฿0</span></div>
     </div>
 
     <div class="warn" id="warnBox"></div>
+    <div class="warn" id="payWarnBox"></div>
 
+    <div class="sec-label" style="margin-top:18px;">Each person's share</div>
     <div class="split-list" id="splitList"></div>
+
+    <div class="sec-label" id="settleLabel" style="margin-top:6px; display:none;">Who transfers who</div>
+    <div class="split-list" id="settleList"></div>
 
     <div class="reset-link">
       <button id="resetAll">reset everything</button>
@@ -466,11 +569,17 @@
   ];
   let nextItemId = 2;
 
+  // payers[personId] = { mode: 'none' | 'full' | 'partial', amount: '' }
+  let payers = {};
+
   const peopleRow = document.getElementById('peopleRow');
   const itemsBody = document.getElementById('itemsBody');
+  const payersBody = document.getElementById('payersBody');
   const peopleCount = document.getElementById('peopleCount');
   const itemCount = document.getElementById('itemCount');
+  const payerCount = document.getElementById('payerCount');
   const warnBox = document.getElementById('warnBox');
+  const payWarnBox = document.getElementById('payWarnBox');
 
   function fmt(n){
     n = isFinite(n) ? n : 0;
@@ -495,6 +604,7 @@
         const id = Number(e.target.dataset.id);
         people.find(p => p.id === id).name = e.target.value;
         renderItems(); // names shown in who-tags need refresh
+        renderPayers();
         calculate();
       });
     });
@@ -503,8 +613,10 @@
         const id = Number(e.target.dataset.id);
         people = people.filter(p => p.id !== id);
         items.forEach(it => { it.who = it.who.filter(w => w !== id); });
+        delete payers[id];
         renderPeople();
         renderItems();
+        renderPayers();
         calculate();
       });
     });
@@ -562,21 +674,65 @@
     });
   }
 
+  function renderPayers(){
+    payersBody.innerHTML = '';
+    people.forEach(p => {
+      if (!payers[p.id]) payers[p.id] = { mode: 'none', amount: '' };
+      const state = payers[p.id];
+      const row = document.createElement('div');
+      row.className = 'payer-row';
+      row.innerHTML = `
+        <div class="pname">${p.name || 'Unnamed'}</div>
+        <div class="mode-btns">
+          <button class="mode-btn ${state.mode === 'none' ? 'active' : ''}" data-id="${p.id}" data-mode="none">Didn't pay</button>
+          <button class="mode-btn ${state.mode === 'full' ? 'active' : ''}" data-id="${p.id}" data-mode="full">Paid full</button>
+          <button class="mode-btn ${state.mode === 'partial' ? 'active' : ''}" data-id="${p.id}" data-mode="partial">Paid some</button>
+        </div>
+        <input type="number" class="partial-amt ${state.mode === 'partial' ? 'show' : ''}" data-id="${p.id}" placeholder="0" min="0" step="1" value="${state.amount}">
+      `;
+      payersBody.appendChild(row);
+    });
+
+    const activePayerCount = Object.values(payers).filter(s => s.mode !== 'none').length;
+    payerCount.textContent = activePayerCount;
+
+    payersBody.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = Number(e.target.dataset.id);
+        const mode = e.target.dataset.mode;
+        payers[id].mode = mode;
+        if (mode !== 'partial') payers[id].amount = '';
+        renderPayers();
+        calculate();
+      });
+    });
+    payersBody.querySelectorAll('.partial-amt').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const id = Number(e.target.dataset.id);
+        payers[id].amount = e.target.value;
+        calculate();
+      });
+    });
+  }
+
   function calculate(){
-    const taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+    const vatPct = parseFloat(document.getElementById('vatPct').value) || 0;
+    const servicePct = parseFloat(document.getElementById('servicePct').value) || 0;
     const tipPct = parseFloat(document.getElementById('tipPct').value) || 0;
     const discountAmt = parseFloat(document.getElementById('discountAmt').value) || 0;
     const roundTo = parseFloat(document.getElementById('roundTo').value) || 0;
     const splitEvenly = document.getElementById('splitEvenly').checked;
 
     const subtotal = items.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0);
-    const taxAmt = subtotal * (taxPct / 100);
+    const vatAmt = subtotal * (vatPct / 100);
+    const serviceAmt = subtotal * (servicePct / 100);
     const tipAmt = subtotal * (tipPct / 100);
-    const grand = Math.max(0, subtotal + taxAmt + tipAmt - discountAmt);
+    const grand = Math.max(0, subtotal + vatAmt + serviceAmt + tipAmt - discountAmt);
     const surchargeMultiplier = subtotal > 0 ? grand / subtotal : 0;
 
     document.getElementById('subOut').textContent = fmt(subtotal);
-    document.getElementById('taxOut').textContent = '+' + fmt(taxAmt);
+    document.getElementById('vatOut').textContent = '+' + fmt(vatAmt);
+    document.getElementById('serviceOut').textContent = '+' + fmt(serviceAmt);
     document.getElementById('tipOut').textContent = '+' + fmt(tipAmt);
     document.getElementById('discOut').textContent = '−' + fmt(discountAmt);
     document.getElementById('grandOut').textContent = fmt(grand);
@@ -612,11 +768,14 @@
 
     const splitList = document.getElementById('splitList');
     splitList.innerHTML = '';
+    const owedMap = {}; // personId -> final amount they're responsible for
+
     people.forEach(p => {
       let owed = shares[p.id] * surchargeMultiplier;
       if (roundTo > 0) {
         owed = Math.ceil(owed / roundTo) * roundTo;
       }
+      owedMap[p.id] = owed;
       const card = document.createElement('div');
       card.className = 'split-card';
       card.innerHTML = `
@@ -628,6 +787,89 @@
       `;
       splitList.appendChild(card);
     });
+
+    // ---- figure out who paid what upfront ----
+    const fullPayers = people.filter(p => payers[p.id] && payers[p.id].mode === 'full');
+    const partialPayers = people.filter(p => payers[p.id] && payers[p.id].mode === 'partial');
+
+    const paidMap = {};
+    people.forEach(p => paidMap[p.id] = 0);
+
+    if (fullPayers.length === 1) {
+      paidMap[fullPayers[0].id] = grand;
+    } else if (fullPayers.length > 1) {
+      // ambiguous: split the "full" payment evenly across whoever claimed it
+      const share = grand / fullPayers.length;
+      fullPayers.forEach(p => { paidMap[p.id] = share; });
+    }
+    partialPayers.forEach(p => {
+      paidMap[p.id] += parseFloat(payers[p.id].amount) || 0;
+    });
+
+    const totalPaidUpfront = Object.values(paidMap).reduce((a, b) => a + b, 0);
+
+    // warnings
+    payWarnBox.classList.remove('show');
+    payWarnBox.textContent = '';
+    if (fullPayers.length > 1) {
+      payWarnBox.textContent = `${fullPayers.length} people marked "paid full" — splitting that payment evenly between them. Use "paid some" with exact amounts if that's not right.`;
+      payWarnBox.classList.add('show');
+    } else if (grand > 0 && totalPaidUpfront - grand > 0.5) {
+      payWarnBox.textContent = `Upfront payments (${fmt(totalPaidUpfront)}) add up to more than the total bill (${fmt(grand)}) — double check the amounts.`;
+      payWarnBox.classList.add('show');
+    }
+
+    // ---- settlement: net = paid - owed. positive = creditor (gets paid back), negative = debtor (owes) ----
+    const settleLabel = document.getElementById('settleLabel');
+    const settleList = document.getElementById('settleList');
+    settleList.innerHTML = '';
+
+    const anyonePaid = totalPaidUpfront > 0;
+    if (!anyonePaid) {
+      settleLabel.style.display = 'none';
+    } else {
+      settleLabel.style.display = 'block';
+      const nets = people.map(p => ({
+        id: p.id,
+        name: p.name || 'Unnamed',
+        net: Math.round((paidMap[p.id] - owedMap[p.id]) * 100) / 100
+      }));
+
+      const debtors = nets.filter(n => n.net < -0.01).map(n => ({...n, remaining: -n.net})).sort((a, b) => b.remaining - a.remaining);
+      const creditors = nets.filter(n => n.net > 0.01).map(n => ({...n, remaining: n.net})).sort((a, b) => b.remaining - a.remaining);
+
+      const transfers = [];
+      let di = 0, ci = 0;
+      while (di < debtors.length && ci < creditors.length) {
+        const d = debtors[di];
+        const c = creditors[ci];
+        const amt = Math.min(d.remaining, c.remaining);
+        if (amt > 0.5) { // ignore dust below half a unit of currency
+          transfers.push({ from: d.name, to: c.name, amount: amt });
+        }
+        d.remaining -= amt;
+        c.remaining -= amt;
+        if (d.remaining <= 0.5) di++;
+        if (c.remaining <= 0.5) ci++;
+      }
+
+      if (transfers.length === 0) {
+        const card = document.createElement('div');
+        card.className = 'settle-card all-clear';
+        card.innerHTML = `<div class="who">Everyone's even — no transfers needed</div>`;
+        settleList.appendChild(card);
+      } else {
+        transfers.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'settle-card';
+          card.innerHTML = `
+            <div class="who">${t.from} <span class="arrow">→</span> ${t.to}</div>
+            <div class="amt">${fmt(t.amount)}</div>
+          `;
+          settleList.appendChild(card);
+        });
+      }
+    }
   }
 
   document.getElementById('addPerson').addEventListener('click', () => {
@@ -635,6 +877,7 @@
     nextPersonId++;
     renderPeople();
     renderItems();
+    renderPayers();
     calculate();
   });
 
@@ -650,23 +893,27 @@
     nextPersonId = 3;
     items = [{ id: 1, name: "", amount: "", who: [] }];
     nextItemId = 2;
-    document.getElementById('taxPct').value = 7;
-    document.getElementById('tipPct').value = 10;
+    payers = {};
+    document.getElementById('vatPct').value = 7;
+    document.getElementById('servicePct').value = 10;
+    document.getElementById('tipPct').value = 0;
     document.getElementById('discountAmt').value = 0;
     document.getElementById('roundTo').value = 0;
     document.getElementById('splitEvenly').checked = false;
     document.getElementById('venueName').value = "Somewhere good";
     renderPeople();
     renderItems();
+    renderPayers();
     calculate();
   });
 
-  ['taxPct','tipPct','discountAmt','roundTo','splitEvenly'].forEach(id => {
+  ['vatPct','servicePct','tipPct','discountAmt','roundTo','splitEvenly'].forEach(id => {
     document.getElementById(id).addEventListener('input', calculate);
   });
 
   renderPeople();
   renderItems();
+  renderPayers();
   calculate();
 </script>
 </body>
